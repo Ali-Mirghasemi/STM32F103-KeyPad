@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -27,6 +28,7 @@
 /* USER CODE BEGIN Includes */
 #include "KeyPad.h"
 #include "KeyPad_Port.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,7 +52,7 @@ static const KeyPad_KeyValue KEYPAD_MAP[] = {
   '7', '8', '9', '/',
   '4', '5', '6', '*',
   '1', '2', '3', '-',
-  'O', '0', '=', '+',
+  //'O', '0', '=', '+',
 };
 static const KeyPad_PinConfig KEYPAD_COLS[] = {
   {KEYPAD_COL_0_GPIO, KEYPAD_COL_0_PIN},
@@ -62,7 +64,7 @@ static const KeyPad_PinConfig KEYPAD_ROWS[] = {
   {KEYPAD_ROW_0_GPIO, KEYPAD_ROW_0_PIN},
   {KEYPAD_ROW_1_GPIO, KEYPAD_ROW_1_PIN},
   {KEYPAD_ROW_2_GPIO, KEYPAD_ROW_2_PIN},
-  {KEYPAD_ROW_3_GPIO, KEYPAD_ROW_3_PIN},
+  //{KEYPAD_ROW_3_GPIO, KEYPAD_ROW_3_PIN},
 };
 
 static const KeyPad_Config KEYPAD_CONFIG = KEYPAD_CONFIG_INIT(KEYPAD_MAP, KEYPAD_COLS, KEYPAD_ROWS);
@@ -112,6 +114,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
@@ -178,15 +181,23 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 KeyPad_HandleStatus onPressed(KeyPad* keypad, KeyPad_KeyValue value, KeyPad_State state) {
-  HAL_UART_Transmit(&huart1, (uint8_t*) &value, sizeof(value), 1); 
+  static char str[32];
+  if (huart1.gState == HAL_UART_STATE_READY) {
+    int len = snprintf(str, sizeof(str), "%c (%u, %u)", value, keypad->RowIndex, keypad->ColIndex);
+    HAL_UART_Transmit_DMA(&huart1, (uint8_t*) str, len); 
+  }
   return KeyPad_NotHandled;
 }
 KeyPad_HandleStatus onHold(KeyPad* keypad, KeyPad_KeyValue value, KeyPad_State state) {
-  
+  static uint32_t nextTick = 0;
+  if (nextTick <= HAL_GetTick()) {
+    nextTick = HAL_GetTick() + 100;
+    HAL_UART_Transmit(&huart1, (uint8_t*) "-", 1, 1); 
+  }
   return KeyPad_NotHandled;
 }
 KeyPad_HandleStatus onReleased(KeyPad* keypad, KeyPad_KeyValue value, KeyPad_State state) {
-  HAL_UART_Transmit(&huart1, (uint8_t*) "\r\n", 2, 10);
+  HAL_UART_Transmit(&huart1, (uint8_t*) "|\r\n", 2, 10);
   return KeyPad_NotHandled;
 }
 

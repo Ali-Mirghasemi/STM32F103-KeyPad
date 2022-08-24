@@ -11,7 +11,7 @@ const KeyPad_Driver KEYPAD_DRIVER = {
 };
 
 void KeyPad_initPin(const KeyPad_PinConfig* config, KeyPad_PinMode mode) {
-  GPIO_InitTypeDef init;
+  GPIO_InitTypeDef init = {0};
   
   switch (mode) {
     case KeyPad_PinMode_InputPullUp:
